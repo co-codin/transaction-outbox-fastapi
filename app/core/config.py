@@ -62,11 +62,6 @@ class Settings(BaseSettings):
         alias="WEBHOOK_TIMEOUT_SECONDS",
         gt=0,
     )
-    webhook_retry_attempts: int = Field(
-        default=3,
-        alias="WEBHOOK_RETRY_ATTEMPTS",
-        ge=1,
-    )
 
     @property
     def payment_processing_delay_range(self) -> tuple[float, float]:

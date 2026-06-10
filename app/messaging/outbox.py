@@ -8,9 +8,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.messaging.topology import (
-    PAYMENTS_EXCHANGE,
-    PAYMENTS_NEW_QUEUE,
-    PAYMENTS_NEW_ROUTING_KEY,
+    route_for_event_type,
 )
 from app.models.outbox import OutboxEvent, OutboxStatus
 
@@ -77,11 +75,12 @@ class OutboxPublisher:
 
                 for event in events:
                     try:
+                        route = route_for_event_type(event.event_type)
                         await self._broker.publish(
                             event.payload,
-                            queue=PAYMENTS_NEW_QUEUE,
-                            exchange=PAYMENTS_EXCHANGE,
-                            routing_key=PAYMENTS_NEW_ROUTING_KEY,
+                            queue=route.queue,
+                            exchange=route.exchange,
+                            routing_key=route.routing_key,
                             persist=True,
                             message_id=str(event.id),
                             message_type=event.event_type,

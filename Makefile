@@ -1,4 +1,4 @@
-.PHONY: help up down down-v build logs logs-api logs-consumer test test-e2e migrate revision clean dev dev-api dev-worker
+.PHONY: help up down down-v build logs logs-api logs-consumer test test-e2e test-broker-outage lint check migrate revision clean dev dev-api dev-worker
 
 # Default target
 help: ## Show this help message
@@ -32,6 +32,18 @@ test: ## Run the test suite (requires activated venv + dev dependencies)
 
 test-e2e: ## Run end-to-end tests against the running Docker stack (make up first)
 	E2E=1 pytest -q tests/test_e2e.py
+
+test-broker-outage: ## Run RabbitMQ outage recovery test against the running Docker stack
+	E2E_BROKER_OUTAGE=1 pytest -q tests/test_broker_outage.py
+
+lint: ## Run Ruff
+	ruff check .
+
+check: ## Run local lint, compile, tests, and Compose validation
+	ruff check .
+	python -m compileall -q app alembic tests
+	pytest -q
+	docker compose config >/dev/null
 
 migrate: ## Run database migrations (alembic upgrade head)
 	alembic upgrade head

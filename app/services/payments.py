@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.outbox import OutboxEvent
 from app.models.payment import Payment, PaymentStatus
-from app.schemas.messages import PaymentEvent
+from app.schemas.messages import PAYMENT_CREATED_EVENT_TYPE, PaymentEvent
 from app.schemas.payments import PaymentCreate
 
 
@@ -54,7 +54,7 @@ async def create_payment(
     session.add(
         OutboxEvent(
             aggregate_id=payment.id,
-            event_type="payments.new",
+            event_type=PAYMENT_CREATED_EVENT_TYPE,
             payload=PaymentEvent(payment_id=payment.id).model_dump(mode="json"),
         ),
     )

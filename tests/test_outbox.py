@@ -5,7 +5,9 @@ from uuid import UUID
 import pytest
 
 from app.messaging.outbox import OutboxPublisher
+from app.messaging.topology import WEBHOOKS_QUEUE
 from app.models.outbox import OutboxStatus
+from app.schemas.messages import PAYMENT_CREATED_EVENT_TYPE, WEBHOOK_DELIVERY_EVENT_TYPE
 
 
 class FakeResult:
@@ -47,11 +49,11 @@ class RecordingBroker:
         self.published.append({"message": message, **kwargs})
 
 
-def _event() -> SimpleNamespace:
+def _event(event_type: str = PAYMENT_CREATED_EVENT_TYPE) -> SimpleNamespace:
     return SimpleNamespace(
         id=UUID("a1163e5d-8f5e-432b-96dd-48ff68204948"),
         aggregate_id=UUID("b2163e5d-8f5e-432b-96dd-48ff68204948"),
-        event_type="payments.new",
+        event_type=event_type,
         payload={"payment_id": "b2163e5d-8f5e-432b-96dd-48ff68204948", "attempt": 1},
         status=OutboxStatus.PENDING.value,
         attempts=0,
@@ -100,3 +102,16 @@ async def test_outbox_success_marks_event_published() -> None:
     assert event.last_error is None
     assert isinstance(event.published_at, datetime)
     assert broker.published[0]["message"] == event.payload
+
+
+@pytest.mark.asyncio
+async def test_outbox_routes_webhook_events_to_webhook_queue() -> None:
+    event = _event(WEBHOOK_DELIVERY_EVENT_TYPE)
+    broker = RecordingBroker()
+    publisher = _publisher(broker, [event])
+
+    published_count = await publisher.publish_once()
+
+    assert published_count == 1
+    assert broker.published[0]["queue"] == WEBHOOKS_QUEUE
+    assert broker.published[0]["message_type"] == WEBHOOK_DELIVERY_EVENT_TYPE
