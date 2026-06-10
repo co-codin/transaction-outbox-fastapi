@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Header, HTTPException, status
 
 from app.api.deps import ApiKeyDep, SessionDep
-from app.schemas.payments import PaymentAccepted, PaymentCreate, PaymentDetail, accepted_from_model
+from app.schemas.payments import PaymentAccepted, PaymentCreate, PaymentDetail
 from app.services.payments import create_payment, get_payment
 
 router = APIRouter(prefix="/api/v1", tags=["payments"])
@@ -42,7 +42,7 @@ async def create_payment_endpoint(
         )
 
     payment = await create_payment(session, payload, idempotency_key)
-    return accepted_from_model(payment)
+    return PaymentAccepted.model_validate(payment)
 
 
 @router.get("/payments/{payment_id}", response_model=PaymentDetail)
@@ -57,4 +57,4 @@ async def get_payment_endpoint(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Payment not found",
         )
-    return PaymentDetail.from_model(payment)
+    return PaymentDetail.model_validate(payment)

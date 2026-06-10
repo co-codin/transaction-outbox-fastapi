@@ -20,10 +20,10 @@ async def create_payment(
 
     payment = Payment(
         amount=payload.amount,
-        currency=payload.currency.value,
+        currency=payload.currency,
         description=payload.description,
         metadata_=payload.metadata,
-        status=PaymentStatus.PENDING.value,
+        status=PaymentStatus.PENDING,
         idempotency_key=idempotency_key,
         webhook_url=str(payload.webhook_url),
     )
