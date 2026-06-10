@@ -17,7 +17,6 @@ from app.models.payment import PaymentStatus
 
 PAYMENT_ID = UUID("a1163e5d-8f5e-432b-96dd-48ff68204948")
 CREATED_AT = datetime(2026, 6, 10, 14, 53, 49, tzinfo=UTC)
-PROCESSED_AT = datetime(2026, 6, 10, 14, 53, 54, tzinfo=UTC)
 
 
 @pytest.fixture

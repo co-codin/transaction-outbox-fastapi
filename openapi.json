@@ -1,0 +1,342 @@
+{
+  "components": {
+    "schemas": {
+      "Currency": {
+        "enum": [
+          "RUB",
+          "USD",
+          "EUR"
+        ],
+        "title": "Currency",
+        "type": "string"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "PaymentAccepted": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "payment_id": {
+            "format": "uuid",
+            "title": "Payment Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PaymentStatus"
+          }
+        },
+        "required": [
+          "payment_id",
+          "status",
+          "created_at"
+        ],
+        "title": "PaymentAccepted",
+        "type": "object"
+      },
+      "PaymentCreate": {
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,16}|(?=[\\d.]{1,19}0*$)\\d{0,16}\\.\\d{0,2}0*$)",
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "$ref": "#/components/schemas/Currency"
+          },
+          "description": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "webhook_url": {
+            "format": "uri",
+            "minLength": 1,
+            "title": "Webhook Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "currency",
+          "description",
+          "webhook_url"
+        ],
+        "title": "PaymentCreate",
+        "type": "object"
+      },
+      "PaymentDetail": {
+        "properties": {
+          "amount": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amount",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "currency": {
+            "$ref": "#/components/schemas/Currency"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "idempotency_key": {
+            "title": "Idempotency Key",
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "payment_id": {
+            "format": "uuid",
+            "title": "Payment Id",
+            "type": "string"
+          },
+          "processed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processed At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PaymentStatus"
+          },
+          "webhook_url": {
+            "format": "uri",
+            "minLength": 1,
+            "title": "Webhook Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "payment_id",
+          "amount",
+          "currency",
+          "description",
+          "metadata",
+          "status",
+          "idempotency_key",
+          "webhook_url",
+          "created_at",
+          "processed_at"
+        ],
+        "title": "PaymentDetail",
+        "type": "object"
+      },
+      "PaymentStatus": {
+        "enum": [
+          "pending",
+          "succeeded",
+          "failed"
+        ],
+        "title": "PaymentStatus",
+        "type": "string"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "APIKeyHeader": {
+        "in": "header",
+        "name": "X-API-Key",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "title": "Async Payment Processor",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/payments": {
+      "post": {
+        "operationId": "create_payment_endpoint_api_v1_payments_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Create Payment Endpoint",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/api/v1/payments/{payment_id}": {
+      "get": {
+        "operationId": "get_payment_endpoint_api_v1_payments__payment_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "payment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Payment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "summary": "Get Payment Endpoint",
+        "tags": [
+          "payments"
+        ]
+      }
+    }
+  }
+}

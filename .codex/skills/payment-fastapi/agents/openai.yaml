@@ -1,0 +1,4 @@
+interface:
+  display_name: "Payment FastAPI"
+  short_description: "Work on the async payment processor repo."
+  default_prompt: "Use this skill when changing or reviewing the payment-fastapi service."

@@ -93,6 +93,13 @@ All endpoints require the `X-API-Key` header.
 | `POST` | `/api/v1/payments`      | `X-API-Key`, `Idempotency-Key` | `202 Accepted` |
 | `GET`  | `/api/v1/payments/{id}` | `X-API-Key`                    | `200 OK`       |
 
+The generated OpenAPI schema is committed at `openapi.json`. Regenerate it
+after API/schema changes with:
+
+```bash
+PYTHONPATH=. python -c "import json; from pathlib import Path; from app.main import app; Path('openapi.json').write_text(json.dumps(app.openapi(), indent=2, sort_keys=True) + '\n')"
+```
+
 **Request body** (`POST /api/v1/payments`):
 
 | Field         | Type           | Notes                                |
@@ -157,6 +164,7 @@ rather than creating a new one.
 python -m venv .venv
 . .venv/bin/activate
 pip install -r requirements-dev.txt
+pre-commit install
 alembic upgrade head
 uvicorn app.main:app --reload
 ```
@@ -177,6 +185,7 @@ Run lint and the local check bundle:
 
 ```bash
 ruff check .
+pre-commit run --all-files
 make check
 ```
 

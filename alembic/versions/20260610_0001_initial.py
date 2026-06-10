@@ -65,7 +65,7 @@ def upgrade() -> None:
         ),
         sa.Column("published_at", sa.DateTime(timezone=True), nullable=True),
         sa.CheckConstraint(
-            "status in ('pending', 'published', 'failed')",
+            "status in ('pending', 'published')",
             name="ck_outbox_status",
         ),
         sa.PrimaryKeyConstraint("id"),
