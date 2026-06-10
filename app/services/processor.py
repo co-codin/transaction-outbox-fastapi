@@ -72,8 +72,6 @@ async def _retry_or_dead_letter(
     }
 
     if current_attempt < settings.max_processing_attempts:
-        # Clamp so MAX_PROCESSING_ATTEMPTS > len(PAYMENTS_RETRY_QUEUES) + 1 reuses
-        # the longest delay instead of raising IndexError (which would skip the DLQ).
         queue_index = min(current_attempt, len(PAYMENTS_RETRY_QUEUES)) - 1
         next_event = PaymentEvent(payment_id=event.payment_id, attempt=current_attempt + 1)
         await broker.publish(

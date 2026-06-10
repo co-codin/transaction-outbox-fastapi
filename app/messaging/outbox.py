@@ -65,10 +65,8 @@ class OutboxPublisher:
 
                 for event in events:
                     try:
-                        payload = dict(event.payload)
-                        payload.setdefault("attempt", 1)
                         await self._broker.publish(
-                            payload,
+                            event.payload,
                             queue=PAYMENTS_NEW_QUEUE,
                             exchange=PAYMENTS_EXCHANGE,
                             routing_key=PAYMENTS_NEW_ROUTING_KEY,

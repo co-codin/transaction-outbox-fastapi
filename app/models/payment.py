@@ -24,8 +24,6 @@ class PaymentStatus(str, enum.Enum):
 
 
 def _string_enum(enum_cls: type[enum.Enum], length: int) -> Enum:
-    # Stores enum *values* (not names) in a plain VARCHAR, matching the existing
-    # columns so no migration is needed.
     return Enum(
         enum_cls,
         native_enum=False,
