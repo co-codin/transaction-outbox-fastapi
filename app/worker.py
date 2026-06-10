@@ -1,0 +1,24 @@
+import logging
+
+from faststream import FastStream
+from faststream.rabbit import RabbitBroker
+
+from app.core.config import settings
+from app.messaging.topology import PAYMENTS_EXCHANGE, PAYMENTS_NEW_QUEUE, declare_topology
+from app.schemas.messages import PaymentEvent
+from app.services.processor import process_payment_event
+
+logging.basicConfig(level=logging.INFO)
+
+broker = RabbitBroker(settings.rabbitmq_url)
+app = FastStream(broker)
+
+
+@app.after_startup
+async def setup_topology() -> None:
+    await declare_topology(broker)
+
+
+@broker.subscriber(PAYMENTS_NEW_QUEUE, PAYMENTS_EXCHANGE)
+async def handle_payment(event: PaymentEvent) -> None:
+    await process_payment_event(event, broker)
