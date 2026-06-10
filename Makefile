@@ -1,0 +1,66 @@
+.PHONY: help up down down-v build logs logs-api logs-consumer test migrate revision clean dev dev-api dev-worker
+
+# Default target
+help: ## Show this help message
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+
+# Docker targets
+up: ## Start all services with Docker Compose (builds if needed)
+	API_KEY=$${API_KEY:-dev-api-key} docker compose up --build
+
+down: ## Stop and remove containers
+	docker compose down
+
+down-v: ## Stop containers and remove volumes (full clean)
+	docker compose down -v
+
+build: ## Build Docker images without starting
+	docker compose build
+
+logs: ## Tail logs for all services
+	docker compose logs -f
+
+logs-api: ## Tail logs for the API service
+	docker compose logs -f api
+
+logs-consumer: ## Tail logs for the consumer service
+	docker compose logs -f consumer
+
+# Local development targets
+test: ## Run the test suite (requires activated venv + dev dependencies)
+	pytest -q
+
+migrate: ## Run database migrations (alembic upgrade head)
+	alembic upgrade head
+
+revision: ## Create a new Alembic revision (usage: make revision MSG="your message")
+	alembic revision --autogenerate -m "$(MSG)"
+
+dev: ## Print local development setup instructions
+	@echo "Local development setup:"
+	@echo ""
+	@echo "  python -m venv .venv"
+	@echo "  . .venv/bin/activate"
+	@echo "  pip install -r requirements-dev.txt"
+	@echo "  cp .env.example .env     # edit if needed"
+	@echo "  make migrate"
+	@echo ""
+	@echo "Then in separate terminals:"
+	@echo "  make dev-api"
+	@echo "  make dev-worker"
+	@echo ""
+	@echo "Run tests with: make test"
+
+dev-api: ## Run the FastAPI development server locally
+	uvicorn app.main:app --reload
+
+dev-worker: ## Run the FastStream consumer locally
+	faststream run app.worker:app --reload
+
+# Utility
+clean: ## Remove Python cache files and __pycache__ directories
+	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -delete 2>/dev/null || true
+	find . -type f -name "*.pyo" -delete 2>/dev/null || true
+	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+	@echo "Cleaned Python cache files."

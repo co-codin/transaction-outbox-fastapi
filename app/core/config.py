@@ -52,6 +52,12 @@ class Settings(BaseSettings):
         ge=1,
     )
 
+    max_processing_attempts: int = Field(
+        default=3,
+        alias="MAX_PROCESSING_ATTEMPTS",
+        ge=1,
+    )
+
     @property
     def payment_processing_delay_range(self) -> tuple[float, float]:
         low = self.payment_processing_min_seconds

@@ -18,14 +18,13 @@ from app.schemas.messages import PaymentEvent
 from app.services.webhooks import send_payment_webhook
 
 logger = logging.getLogger(__name__)
-MAX_PROCESSING_ATTEMPTS = 3
 
 
 async def process_payment_event(event: PaymentEvent, broker: RabbitBroker) -> None:
     try:
         async with async_session_maker() as session:
             payment = await _process_or_load_payment(session, event)
-            await send_payment_webhook(payment)
+        await send_payment_webhook(payment)
     except Exception as exc:
         logger.warning(
             "Payment event %s failed on attempt %s: %s",
@@ -67,7 +66,7 @@ async def _retry_or_dead_letter(
         "x-attempt": str(current_attempt),
     }
 
-    if current_attempt < MAX_PROCESSING_ATTEMPTS:
+    if current_attempt < settings.max_processing_attempts:
         next_attempt = current_attempt + 1
         retry_queue = PAYMENTS_RETRY_QUEUES[current_attempt - 1]
         message = {"payment_id": str(event.payment_id), "attempt": next_attempt}

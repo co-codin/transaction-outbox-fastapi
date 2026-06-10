@@ -33,7 +33,7 @@ async def create_payment(
     session.add(
         OutboxEvent(
             aggregate_id=payment.id,
-            event_type="payment.created",
+            event_type="payments.new",
             payload={"payment_id": str(payment.id), "attempt": 1},
         ),
     )
