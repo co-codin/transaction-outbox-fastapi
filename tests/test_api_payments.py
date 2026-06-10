@@ -34,6 +34,73 @@ async def test_create_payment_requires_idempotency_key(
     assert response.json()["detail"] == "Idempotency-Key header is required"
 
 
+async def test_create_payment_rejects_blank_idempotency_key(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+) -> None:
+    response = await client.post(
+        "/api/v1/payments",
+        headers={**auth_headers, "Idempotency-Key": "   "},
+        json={
+            "amount": "1500.00",
+            "currency": "RUB",
+            "description": "Order smoke test",
+            "metadata": {"order_id": "smoke-1"},
+            "webhook_url": "https://example.com/webhook",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Idempotency-Key header is required"
+
+
+async def test_create_payment_rejects_oversized_idempotency_key(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+) -> None:
+    response = await client.post(
+        "/api/v1/payments",
+        headers={**auth_headers, "Idempotency-Key": "k" * 256},
+        json={
+            "amount": "1500.00",
+            "currency": "RUB",
+            "description": "Order smoke test",
+            "metadata": {"order_id": "smoke-1"},
+            "webhook_url": "https://example.com/webhook",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == (
+        "Idempotency-Key header must be at most 255 characters"
+    )
+
+
+async def test_create_payment_strips_idempotency_key(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+) -> None:
+    response = await client.post(
+        "/api/v1/payments",
+        headers={**auth_headers, "Idempotency-Key": "  smoke-1  "},
+        json={
+            "amount": "1500.00",
+            "currency": "RUB",
+            "description": "Order smoke test",
+            "metadata": {"order_id": "smoke-1"},
+            "webhook_url": "https://example.com/webhook",
+        },
+    )
+
+    assert response.status_code == 202
+
+    detail = await client.get(
+        f"/api/v1/payments/{response.json()['payment_id']}",
+        headers=auth_headers,
+    )
+    assert detail.json()["idempotency_key"] == "smoke-1"
+
+
 async def test_create_payment_returns_accepted_payment(
     client: AsyncClient,
     auth_headers: dict[str, str],
