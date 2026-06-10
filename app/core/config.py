@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     api_key: str = Field(default="change-me", alias="API_KEY")
     database_url: str = Field(
@@ -23,11 +23,6 @@ class Settings(BaseSettings):
         gt=0,
     )
     outbox_batch_size: int = Field(default=50, alias="OUTBOX_BATCH_SIZE", gt=0)
-    outbox_max_publish_attempts: int = Field(
-        default=10,
-        alias="OUTBOX_MAX_PUBLISH_ATTEMPTS",
-        ge=1,
-    )
     outbox_retention_seconds: float = Field(
         default=86400.0,
         alias="OUTBOX_RETENTION_SECONDS",
@@ -70,12 +65,6 @@ class Settings(BaseSettings):
     webhook_retry_attempts: int = Field(
         default=3,
         alias="WEBHOOK_RETRY_ATTEMPTS",
-        ge=1,
-    )
-
-    max_processing_attempts: int = Field(
-        default=3,
-        alias="MAX_PROCESSING_ATTEMPTS",
         ge=1,
     )
 

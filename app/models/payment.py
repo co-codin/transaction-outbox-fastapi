@@ -57,6 +57,8 @@ class Payment(Base):
     )
     idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     webhook_url: Mapped[str] = mapped_column(Text, nullable=False)
+    webhook_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    webhook_last_error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

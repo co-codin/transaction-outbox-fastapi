@@ -25,7 +25,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         async_session_maker,
         poll_interval_seconds=settings.outbox_poll_interval_seconds,
         batch_size=settings.outbox_batch_size,
-        max_publish_attempts=settings.outbox_max_publish_attempts,
         retention_seconds=settings.outbox_retention_seconds,
         cleanup_interval_seconds=settings.outbox_cleanup_interval_seconds,
     )

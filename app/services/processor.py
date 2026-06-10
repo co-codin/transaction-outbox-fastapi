@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import random
+import uuid
 from datetime import UTC, datetime
 
 from faststream.rabbit import RabbitBroker
@@ -18,13 +19,14 @@ from app.schemas.messages import PaymentEvent
 from app.services.webhooks import send_payment_webhook
 
 logger = logging.getLogger(__name__)
+MAX_PROCESSING_ATTEMPTS = 3
 
 
 async def process_payment_event(event: PaymentEvent, broker: RabbitBroker) -> None:
     try:
         async with async_session_maker() as session:
             payment = await _process_or_load_payment(session, event)
-        await send_payment_webhook(payment)
+        await _send_webhook_once(payment.id)
     except Exception as exc:
         logger.warning(
             "Payment event %s failed on attempt %s: %s",
@@ -60,6 +62,31 @@ async def _process_or_load_payment(session: AsyncSession, event: PaymentEvent) -
     return payment
 
 
+async def _send_webhook_once(payment_id: uuid.UUID) -> None:
+    webhook_error: Exception | None = None
+
+    async with async_session_maker() as session:
+        async with session.begin():
+            payment = await session.get(Payment, payment_id, with_for_update=True)
+            if payment is None:
+                raise RuntimeError(f"Payment {payment_id} not found")
+
+            if payment.webhook_sent_at is not None:
+                return
+
+            try:
+                await send_payment_webhook(payment)
+            except Exception as exc:
+                payment.webhook_last_error = str(exc)[:2000]
+                webhook_error = exc
+            else:
+                payment.webhook_sent_at = datetime.now(UTC)
+                payment.webhook_last_error = None
+
+    if webhook_error is not None:
+        raise RuntimeError(f"Webhook delivery failed for payment {payment_id}: {webhook_error}") from webhook_error
+
+
 async def _retry_or_dead_letter(
     event: PaymentEvent,
     broker: RabbitBroker,
@@ -71,8 +98,8 @@ async def _retry_or_dead_letter(
         "x-attempt": str(current_attempt),
     }
 
-    if current_attempt < settings.max_processing_attempts:
-        queue_index = min(current_attempt, len(PAYMENTS_RETRY_QUEUES)) - 1
+    if current_attempt < MAX_PROCESSING_ATTEMPTS:
+        queue_index = current_attempt - 1
         next_event = PaymentEvent(payment_id=event.payment_id, attempt=current_attempt + 1)
         try:
             await broker.publish(

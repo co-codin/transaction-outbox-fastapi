@@ -25,7 +25,6 @@ class OutboxPublisher:
         *,
         poll_interval_seconds: float,
         batch_size: int,
-        max_publish_attempts: int,
         retention_seconds: float,
         cleanup_interval_seconds: float,
     ) -> None:
@@ -33,7 +32,6 @@ class OutboxPublisher:
         self._session_factory = session_factory
         self._poll_interval_seconds = poll_interval_seconds
         self._batch_size = batch_size
-        self._max_publish_attempts = max_publish_attempts
         self._retention_seconds = retention_seconds
         self._cleanup_interval_seconds = cleanup_interval_seconds
         self._task: asyncio.Task[None] | None = None
@@ -91,20 +89,12 @@ class OutboxPublisher:
                     except Exception as exc:
                         event.attempts += 1
                         event.last_error = str(exc)[:2000]
-                        if event.attempts >= self._max_publish_attempts:
-                            event.status = OutboxStatus.FAILED.value
-                            logger.error(
-                                "Outbox event %s failed permanently after %s attempts: %s",
-                                event.id,
-                                event.attempts,
-                                exc,
-                            )
-                        else:
-                            logger.warning(
-                                "Failed to publish outbox event %s: %s",
-                                event.id,
-                                exc,
-                            )
+                        logger.warning(
+                            "Failed to publish outbox event %s on attempt %s: %s",
+                            event.id,
+                            event.attempts,
+                            exc,
+                        )
                     else:
                         event.status = OutboxStatus.PUBLISHED.value
                         event.published_at = datetime.now(UTC)

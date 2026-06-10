@@ -190,7 +190,6 @@ and defaults. The most relevant:
 | `PAYMENT_PROCESSING_MAX_SECONDS` | Upper bound of the emulated gateway delay      |
 | `PAYMENT_SUCCESS_RATE`           | Probability of `succeeded` (default `0.9`)     |
 | `WEBHOOK_RETRY_ATTEMPTS`         | Webhook delivery attempts (default `3`)        |
-| `MAX_PROCESSING_ATTEMPTS`        | Processing attempts before DLQ (default `3`)   |
 
 ## Delivery Guarantees
 
@@ -201,7 +200,8 @@ and defaults. The most relevant:
   `IntegrityError` fallback, ensures concurrent duplicate requests resolve to the
   same payment.
 - **Idempotent processing.** The consumer locks the payment row (`FOR UPDATE`)
-  and skips any payment already in a terminal state, so duplicate or retried
+  and skips any payment already in a terminal state. Webhook delivery is also
+  guarded by a persisted `webhook_sent_at` timestamp, so duplicate or retried
   deliveries never reprocess or double-notify.
 - **Retries.** Failed processing is retried via TTL queues with exponential
   delays of 2 s and 4 s.
