@@ -53,7 +53,7 @@ def upgrade() -> None:
         sa.Column("event_type", sa.String(length=100), nullable=False),
         sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
         sa.Column("status", sa.String(length=16), nullable=False),
-        sa.Column("attempts", sa.Integer(), nullable=False),
+        sa.Column("attempts", sa.Integer(), nullable=False, server_default=sa.text("0")),
         sa.Column("last_error", sa.Text(), nullable=True),
         sa.Column(
             "created_at",
