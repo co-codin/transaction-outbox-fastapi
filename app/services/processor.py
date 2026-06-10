@@ -36,7 +36,12 @@ async def process_payment_event(event: PaymentEvent, broker: RabbitBroker) -> No
 
 
 async def _process_or_load_payment(session: AsyncSession, event: PaymentEvent) -> Payment:
-    payment = await session.get(Payment, event.payment_id)
+    # Lock the payment row so concurrent/duplicate deliveries of the same event
+    # serialize: a second handler blocks here until the first commits, then re-reads
+    # the now-terminal status below and skips reprocessing. The lock is held across
+    # the simulated processing delay, but it is per-row and only contends with
+    # duplicates of the *same* payment, not with other payments.
+    payment = await session.get(Payment, event.payment_id, with_for_update=True)
     if payment is None:
         raise RuntimeError(f"Payment {event.payment_id} not found")
 
