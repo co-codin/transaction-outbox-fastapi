@@ -28,6 +28,8 @@ def upgrade() -> None:
         sa.Column("status", sa.String(length=16), nullable=False),
         sa.Column("idempotency_key", sa.String(length=255), nullable=False),
         sa.Column("webhook_url", sa.Text(), nullable=False),
+        sa.Column("webhook_sent_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("webhook_last_error", sa.Text(), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -62,14 +64,24 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("published_at", sa.DateTime(timezone=True), nullable=True),
-        sa.CheckConstraint("status in ('pending', 'published')", name="ck_outbox_status"),
+        sa.CheckConstraint(
+            "status in ('pending', 'published', 'failed')",
+            name="ck_outbox_status",
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index("ix_outbox_aggregate_id", "outbox", ["aggregate_id"], unique=False)
     op.create_index("ix_outbox_status_created_at", "outbox", ["status", "created_at"], unique=False)
+    op.create_index(
+        "ix_outbox_status_published_at",
+        "outbox",
+        ["status", "published_at"],
+        unique=False,
+    )
 
 
 def downgrade() -> None:
+    op.drop_index("ix_outbox_status_published_at", table_name="outbox")
     op.drop_index("ix_outbox_status_created_at", table_name="outbox")
     op.drop_index("ix_outbox_aggregate_id", table_name="outbox")
     op.drop_table("outbox")
