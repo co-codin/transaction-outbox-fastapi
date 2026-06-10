@@ -9,7 +9,9 @@ from app.services.payments import create_payment, get_payment
 
 router = APIRouter(prefix="/api/v1", tags=["payments"])
 
-# Must match the payments.idempotency_key column: String(255).
+# Must match the payments.idempotency_key column (String(255)); a longer value
+# would otherwise fail at INSERT with StringDataRightTruncation (an unhandled 500)
+# instead of a clean 400.
 IDEMPOTENCY_KEY_MAX_LENGTH = 255
 
 

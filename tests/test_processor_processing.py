@@ -38,6 +38,10 @@ def _payment(status: str) -> SimpleNamespace:
     )
 
 
+async def _noop_sleep(_seconds: float) -> None:
+    return None
+
+
 @pytest.mark.asyncio
 async def test_pending_payment_is_locked_and_processed(monkeypatch: pytest.MonkeyPatch) -> None:
     # Make processing deterministic and instant.
@@ -69,7 +73,3 @@ async def test_already_terminal_payment_is_not_reprocessed() -> None:
     assert session.get_calls == [{"pk": PAYMENT_ID, "with_for_update": True}]
     assert result.status == PaymentStatus.SUCCEEDED.value
     assert session.commits == 0
-
-
-async def _noop_sleep(_seconds: float) -> None:
-    return None
