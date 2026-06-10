@@ -23,6 +23,27 @@ class Settings(BaseSettings):
         gt=0,
     )
     outbox_batch_size: int = Field(default=50, alias="OUTBOX_BATCH_SIZE", gt=0)
+    outbox_max_publish_attempts: int = Field(
+        default=10,
+        alias="OUTBOX_MAX_PUBLISH_ATTEMPTS",
+        ge=1,
+    )
+    outbox_retention_seconds: float = Field(
+        default=86400.0,
+        alias="OUTBOX_RETENTION_SECONDS",
+        ge=0,
+    )
+    outbox_cleanup_interval_seconds: float = Field(
+        default=300.0,
+        alias="OUTBOX_CLEANUP_INTERVAL_SECONDS",
+        gt=0,
+    )
+
+    consumer_prefetch_count: int = Field(
+        default=10,
+        alias="CONSUMER_PREFETCH_COUNT",
+        ge=1,
+    )
 
     payment_processing_min_seconds: float = Field(
         default=2.0,

@@ -10,6 +10,26 @@ from app.schemas.messages import PaymentEvent
 from app.schemas.payments import PaymentCreate
 
 
+class IdempotencyKeyConflictError(Exception):
+    pass
+
+
+def _matches_payload(payment: Payment, payload: PaymentCreate) -> bool:
+    return (
+        payment.amount == payload.amount
+        and payment.currency == payload.currency
+        and payment.description == payload.description
+        and payment.metadata_ == payload.metadata
+        and payment.webhook_url == str(payload.webhook_url)
+    )
+
+
+def _existing_or_conflict(payment: Payment, payload: PaymentCreate) -> Payment:
+    if not _matches_payload(payment, payload):
+        raise IdempotencyKeyConflictError(payment.idempotency_key)
+    return payment
+
+
 async def create_payment(
     session: AsyncSession,
     payload: PaymentCreate,
@@ -17,7 +37,7 @@ async def create_payment(
 ) -> Payment:
     existing = await get_payment_by_idempotency_key(session, idempotency_key)
     if existing is not None:
-        return existing
+        return _existing_or_conflict(existing, payload)
 
     payment = Payment(
         amount=payload.amount,
@@ -45,7 +65,7 @@ async def create_payment(
         await session.rollback()
         existing = await get_payment_by_idempotency_key(session, idempotency_key)
         if existing is not None:
-            return existing
+            return _existing_or_conflict(existing, payload)
         raise
 
     await session.refresh(payment)

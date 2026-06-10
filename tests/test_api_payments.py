@@ -3,6 +3,9 @@ from uuid import uuid4
 import pytest
 from httpx import AsyncClient
 
+from app.api import routes
+from app.services.payments import IdempotencyKeyConflictError
+
 
 pytestmark = pytest.mark.asyncio
 
@@ -123,6 +126,34 @@ async def test_create_payment_returns_accepted_payment(
         "status": "pending",
         "created_at": "2026-06-10T14:53:49Z",
     }
+
+
+async def test_create_payment_conflicting_idempotency_key_returns_409(
+    client: AsyncClient,
+    auth_headers: dict[str, str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def conflicting_create_payment(session, payload, idempotency_key):
+        raise IdempotencyKeyConflictError(idempotency_key)
+
+    monkeypatch.setattr(routes, "create_payment", conflicting_create_payment)
+
+    response = await client.post(
+        "/api/v1/payments",
+        headers={**auth_headers, "Idempotency-Key": "smoke-1"},
+        json={
+            "amount": "999.00",
+            "currency": "RUB",
+            "description": "Different body, same key",
+            "metadata": {},
+            "webhook_url": "https://example.com/webhook",
+        },
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Idempotency-Key already used with a different request body"
+    )
 
 
 async def test_get_payment_returns_detail(

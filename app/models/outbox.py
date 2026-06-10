@@ -13,6 +13,7 @@ from app.db.base import Base
 class OutboxStatus(str, enum.Enum):
     PENDING = "pending"
     PUBLISHED = "published"
+    FAILED = "failed"
 
 
 class OutboxEvent(Base):

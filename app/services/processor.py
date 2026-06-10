@@ -74,14 +74,21 @@ async def _retry_or_dead_letter(
     if current_attempt < settings.max_processing_attempts:
         queue_index = min(current_attempt, len(PAYMENTS_RETRY_QUEUES)) - 1
         next_event = PaymentEvent(payment_id=event.payment_id, attempt=current_attempt + 1)
-        await broker.publish(
-            next_event.model_dump(mode="json"),
-            queue=PAYMENTS_RETRY_QUEUES[queue_index],
-            persist=True,
-            headers=headers,
-            message_type="payment.retry",
-        )
-        return
+        try:
+            await broker.publish(
+                next_event.model_dump(mode="json"),
+                queue=PAYMENTS_RETRY_QUEUES[queue_index],
+                persist=True,
+                headers=headers,
+                message_type="payment.retry",
+            )
+        except Exception:
+            logger.exception(
+                "Failed to schedule retry for payment %s; dead-lettering",
+                event.payment_id,
+            )
+        else:
+            return
 
     dead_event = PaymentEvent(payment_id=event.payment_id, attempt=current_attempt)
     await broker.publish(
