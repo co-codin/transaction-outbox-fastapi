@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import DateTime, Numeric, String, Text, func
+from sqlalchemy import DateTime, Enum, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -23,6 +23,16 @@ class PaymentStatus(str, enum.Enum):
     FAILED = "failed"
 
 
+def _string_enum(enum_cls: type[enum.Enum], length: int) -> Enum:
+    return Enum(
+        enum_cls,
+        native_enum=False,
+        create_constraint=False,
+        length=length,
+        values_callable=lambda e: [member.value for member in e],
+    )
+
+
 class Payment(Base):
     __tablename__ = "payments"
 
@@ -32,7 +42,7 @@ class Payment(Base):
         default=uuid.uuid4,
     )
     amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), nullable=False)
-    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    currency: Mapped[Currency] = mapped_column(_string_enum(Currency, 3), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     metadata_: Mapped[dict[str, Any]] = mapped_column(
         "metadata",
@@ -40,10 +50,10 @@ class Payment(Base):
         nullable=False,
         default=dict,
     )
-    status: Mapped[str] = mapped_column(
-        String(16),
+    status: Mapped[PaymentStatus] = mapped_column(
+        _string_enum(PaymentStatus, 16),
         nullable=False,
-        default=PaymentStatus.PENDING.value,
+        default=PaymentStatus.PENDING,
     )
     idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     webhook_url: Mapped[str] = mapped_column(Text, nullable=False)

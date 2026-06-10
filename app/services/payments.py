@@ -6,7 +6,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.outbox import OutboxEvent
 from app.models.payment import Payment, PaymentStatus
+from app.schemas.messages import PaymentEvent
 from app.schemas.payments import PaymentCreate
+
+
+class IdempotencyKeyConflictError(Exception):
+    pass
+
+
+def _matches_payload(payment: Payment, payload: PaymentCreate) -> bool:
+    return (
+        payment.amount == payload.amount
+        and payment.currency == payload.currency
+        and payment.description == payload.description
+        and payment.metadata_ == payload.metadata
+        and payment.webhook_url == str(payload.webhook_url)
+    )
+
+
+def _existing_or_conflict(payment: Payment, payload: PaymentCreate) -> Payment:
+    if not _matches_payload(payment, payload):
+        raise IdempotencyKeyConflictError(payment.idempotency_key)
+    return payment
 
 
 async def create_payment(
@@ -16,14 +37,14 @@ async def create_payment(
 ) -> Payment:
     existing = await get_payment_by_idempotency_key(session, idempotency_key)
     if existing is not None:
-        return existing
+        return _existing_or_conflict(existing, payload)
 
     payment = Payment(
         amount=payload.amount,
-        currency=payload.currency.value,
+        currency=payload.currency,
         description=payload.description,
         metadata_=payload.metadata,
-        status=PaymentStatus.PENDING.value,
+        status=PaymentStatus.PENDING,
         idempotency_key=idempotency_key,
         webhook_url=str(payload.webhook_url),
     )
@@ -34,7 +55,7 @@ async def create_payment(
         OutboxEvent(
             aggregate_id=payment.id,
             event_type="payments.new",
-            payload={"payment_id": str(payment.id), "attempt": 1},
+            payload=PaymentEvent(payment_id=payment.id).model_dump(mode="json"),
         ),
     )
 
@@ -44,7 +65,7 @@ async def create_payment(
         await session.rollback()
         existing = await get_payment_by_idempotency_key(session, idempotency_key)
         if existing is not None:
-            return existing
+            return _existing_or_conflict(existing, payload)
         raise
 
     await session.refresh(payment)

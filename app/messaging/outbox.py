@@ -1,9 +1,10 @@
 import asyncio
 import logging
-from datetime import UTC, datetime
+import time
+from datetime import UTC, datetime, timedelta
 
 from faststream.rabbit import RabbitBroker
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.messaging.topology import (
@@ -24,11 +25,17 @@ class OutboxPublisher:
         *,
         poll_interval_seconds: float,
         batch_size: int,
+        max_publish_attempts: int,
+        retention_seconds: float,
+        cleanup_interval_seconds: float,
     ) -> None:
         self._broker = broker
         self._session_factory = session_factory
         self._poll_interval_seconds = poll_interval_seconds
         self._batch_size = batch_size
+        self._max_publish_attempts = max_publish_attempts
+        self._retention_seconds = retention_seconds
+        self._cleanup_interval_seconds = cleanup_interval_seconds
         self._task: asyncio.Task[None] | None = None
 
     def start(self) -> None:
@@ -44,11 +51,18 @@ class OutboxPublisher:
             pass
 
     async def _run(self) -> None:
+        next_cleanup = 0.0
         while True:
             try:
                 await self.publish_once()
             except Exception:
                 logger.exception("Outbox publisher iteration failed")
+            if time.monotonic() >= next_cleanup:
+                try:
+                    await self.purge_published()
+                except Exception:
+                    logger.exception("Outbox cleanup failed")
+                next_cleanup = time.monotonic() + self._cleanup_interval_seconds
             await asyncio.sleep(self._poll_interval_seconds)
 
     async def publish_once(self) -> int:
@@ -65,10 +79,8 @@ class OutboxPublisher:
 
                 for event in events:
                     try:
-                        payload = dict(event.payload)
-                        payload.setdefault("attempt", 1)
                         await self._broker.publish(
-                            payload,
+                            event.payload,
                             queue=PAYMENTS_NEW_QUEUE,
                             exchange=PAYMENTS_EXCHANGE,
                             routing_key=PAYMENTS_NEW_ROUTING_KEY,
@@ -79,10 +91,37 @@ class OutboxPublisher:
                     except Exception as exc:
                         event.attempts += 1
                         event.last_error = str(exc)[:2000]
-                        logger.warning("Failed to publish outbox event %s: %s", event.id, exc)
+                        if event.attempts >= self._max_publish_attempts:
+                            event.status = OutboxStatus.FAILED.value
+                            logger.error(
+                                "Outbox event %s failed permanently after %s attempts: %s",
+                                event.id,
+                                event.attempts,
+                                exc,
+                            )
+                        else:
+                            logger.warning(
+                                "Failed to publish outbox event %s: %s",
+                                event.id,
+                                exc,
+                            )
                     else:
                         event.status = OutboxStatus.PUBLISHED.value
                         event.published_at = datetime.now(UTC)
                         event.last_error = None
 
         return len(events)
+
+    async def purge_published(self) -> int:
+        cutoff = datetime.now(UTC) - timedelta(seconds=self._retention_seconds)
+        async with self._session_factory() as session:
+            async with session.begin():
+                result = await session.execute(
+                    delete(OutboxEvent).where(
+                        OutboxEvent.status == OutboxStatus.PUBLISHED.value,
+                        OutboxEvent.published_at < cutoff,
+                    ),
+                )
+        if result.rowcount:
+            logger.info("Purged %s published outbox events", result.rowcount)
+        return result.rowcount

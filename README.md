@@ -168,6 +168,14 @@ Run the tests:
 pytest
 ```
 
+With the Docker stack running, run the end-to-end suite (creates a real payment,
+verifies idempotent replay, the 409 conflict on body mismatch, processing, and
+webhook delivery to a local receiver):
+
+```bash
+E2E=1 pytest tests/test_e2e.py
+```
+
 ## Configuration
 
 All settings are read from the environment; see `.env.example` for the full list

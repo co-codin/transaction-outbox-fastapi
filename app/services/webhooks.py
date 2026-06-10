@@ -1,29 +1,15 @@
 import asyncio
-from decimal import Decimal
 from typing import Any
 
 import httpx
 
 from app.core.config import settings
 from app.models.payment import Payment
-
-
-def _json_decimal(value: Decimal) -> str:
-    return format(value, "f")
+from app.schemas.messages import WebhookPayload
 
 
 def build_webhook_payload(payment: Payment) -> dict[str, Any]:
-    return {
-        "event": "payment.processed",
-        "payment_id": str(payment.id),
-        "status": payment.status,
-        "amount": _json_decimal(payment.amount),
-        "currency": payment.currency,
-        "description": payment.description,
-        "metadata": payment.metadata_,
-        "created_at": payment.created_at.isoformat(),
-        "processed_at": payment.processed_at.isoformat() if payment.processed_at else None,
-    }
+    return WebhookPayload.model_validate(payment).model_dump(mode="json")
 
 
 async def send_payment_webhook(payment: Payment) -> None:

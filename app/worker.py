@@ -1,7 +1,7 @@
 import logging
 
 from faststream import FastStream
-from faststream.rabbit import RabbitBroker
+from faststream.rabbit import Channel, RabbitBroker
 
 from app.core.config import settings
 from app.messaging.topology import PAYMENTS_EXCHANGE, PAYMENTS_NEW_QUEUE, declare_topology
@@ -19,6 +19,10 @@ async def setup_topology() -> None:
     await declare_topology(broker)
 
 
-@broker.subscriber(PAYMENTS_NEW_QUEUE, PAYMENTS_EXCHANGE)
+@broker.subscriber(
+    PAYMENTS_NEW_QUEUE,
+    PAYMENTS_EXCHANGE,
+    channel=Channel(prefetch_count=settings.consumer_prefetch_count),
+)
 async def handle_payment(event: PaymentEvent) -> None:
     await process_payment_event(event, broker)

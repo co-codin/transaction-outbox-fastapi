@@ -45,13 +45,13 @@ async def _process_or_load_payment(session: AsyncSession, event: PaymentEvent) -
     if payment is None:
         raise RuntimeError(f"Payment {event.payment_id} not found")
 
-    if payment.status == PaymentStatus.PENDING.value:
+    if payment.status == PaymentStatus.PENDING:
         delay_low, delay_high = settings.payment_processing_delay_range
         await asyncio.sleep(random.uniform(delay_low, delay_high))
         payment.status = (
-            PaymentStatus.SUCCEEDED.value
+            PaymentStatus.SUCCEEDED
             if random.random() < settings.payment_success_rate
-            else PaymentStatus.FAILED.value
+            else PaymentStatus.FAILED
         )
         payment.processed_at = datetime.now(UTC)
         await session.commit()
@@ -72,21 +72,27 @@ async def _retry_or_dead_letter(
     }
 
     if current_attempt < settings.max_processing_attempts:
-        next_attempt = current_attempt + 1
-        retry_queue = PAYMENTS_RETRY_QUEUES[current_attempt - 1]
-        message = {"payment_id": str(event.payment_id), "attempt": next_attempt}
-        await broker.publish(
-            message,
-            queue=retry_queue,
-            persist=True,
-            headers=headers,
-            message_type="payment.retry",
-        )
-        return
+        queue_index = min(current_attempt, len(PAYMENTS_RETRY_QUEUES)) - 1
+        next_event = PaymentEvent(payment_id=event.payment_id, attempt=current_attempt + 1)
+        try:
+            await broker.publish(
+                next_event.model_dump(mode="json"),
+                queue=PAYMENTS_RETRY_QUEUES[queue_index],
+                persist=True,
+                headers=headers,
+                message_type="payment.retry",
+            )
+        except Exception:
+            logger.exception(
+                "Failed to schedule retry for payment %s; dead-lettering",
+                event.payment_id,
+            )
+        else:
+            return
 
-    message = {"payment_id": str(event.payment_id), "attempt": current_attempt}
+    dead_event = PaymentEvent(payment_id=event.payment_id, attempt=current_attempt)
     await broker.publish(
-        message,
+        dead_event.model_dump(mode="json"),
         exchange=PAYMENTS_DEAD_EXCHANGE,
         routing_key=PAYMENTS_DLQ_ROUTING_KEY,
         persist=True,

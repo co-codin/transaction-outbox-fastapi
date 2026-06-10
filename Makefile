@@ -1,4 +1,4 @@
-.PHONY: help up down down-v build logs logs-api logs-consumer test migrate revision clean dev dev-api dev-worker
+.PHONY: help up down down-v build logs logs-api logs-consumer test test-e2e migrate revision clean dev dev-api dev-worker
 
 # Default target
 help: ## Show this help message
@@ -29,6 +29,9 @@ logs-consumer: ## Tail logs for the consumer service
 # Local development targets
 test: ## Run the test suite (requires activated venv + dev dependencies)
 	pytest -q
+
+test-e2e: ## Run end-to-end tests against the running Docker stack (make up first)
+	E2E=1 pytest -q tests/test_e2e.py
 
 migrate: ## Run database migrations (alembic upgrade head)
 	alembic upgrade head
