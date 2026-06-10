@@ -59,7 +59,6 @@ class Payment(Base):
     webhook_url: Mapped[str] = mapped_column(Text, nullable=False)
     webhook_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     webhook_last_error: Mapped[str | None] = mapped_column(Text)
-    webhook_locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

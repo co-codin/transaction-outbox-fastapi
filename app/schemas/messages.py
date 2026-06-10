@@ -8,15 +8,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from app.models.payment import Currency, PaymentStatus
 
 PAYMENT_CREATED_EVENT_TYPE = "payments.new"
-WEBHOOK_DELIVERY_EVENT_TYPE = "webhooks.deliver"
 
 
 class PaymentEvent(BaseModel):
-    payment_id: uuid.UUID
-    attempt: int = Field(default=1, ge=1)
-
-
-class WebhookDeliveryEvent(BaseModel):
     payment_id: uuid.UUID
     attempt: int = Field(default=1, ge=1)
 

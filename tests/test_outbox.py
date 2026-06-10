@@ -5,9 +5,8 @@ from uuid import UUID
 import pytest
 
 from app.messaging.outbox import OutboxPublisher
-from app.messaging.topology import WEBHOOKS_QUEUE
 from app.models.outbox import OutboxStatus
-from app.schemas.messages import PAYMENT_CREATED_EVENT_TYPE, WEBHOOK_DELIVERY_EVENT_TYPE
+from app.schemas.messages import PAYMENT_CREATED_EVENT_TYPE
 
 
 class FakeResult:
@@ -102,16 +101,3 @@ async def test_outbox_success_marks_event_published() -> None:
     assert event.last_error is None
     assert isinstance(event.published_at, datetime)
     assert broker.published[0]["message"] == event.payload
-
-
-@pytest.mark.asyncio
-async def test_outbox_routes_webhook_events_to_webhook_queue() -> None:
-    event = _event(WEBHOOK_DELIVERY_EVENT_TYPE)
-    broker = RecordingBroker()
-    publisher = _publisher(broker, [event])
-
-    published_count = await publisher.publish_once()
-
-    assert published_count == 1
-    assert broker.published[0]["queue"] == WEBHOOKS_QUEUE
-    assert broker.published[0]["message_type"] == WEBHOOK_DELIVERY_EVENT_TYPE

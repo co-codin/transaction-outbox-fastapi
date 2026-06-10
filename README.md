@@ -38,22 +38,11 @@ client ──POST /payments──▶  API  ──┐  (one DB transaction)
                        dead-letter (TTL)    │                │ 1. lock payment row
               [ payments.retry.1 (2s) ] ────┤                │ 2. emulate gateway (2–5s, 90% ok)
               [ payments.retry.2 (4s) ] ────┘                │ 3. update status + processed_at
-                                                             │ 4. enqueue webhook outbox event
+                                            │                │ 4. POST webhook (once, guarded
+                                            │                │    by webhook_sent_at)
                                             ┌────────────────┤
-                                            ▼  after 3 processing attempts
+                                            ▼  after 3 attempts
                                     [ payments.dlq ]
-
-                              RabbitMQ  webhooks exchange
-                                            │ routing key: webhooks.deliver
-                                            ▼
-                                  [ webhooks.deliver ] ──▶ webhook sender
-                                            ▲                  │
-                       dead-letter (TTL)    │                  │ claim delivery, POST webhook,
-              [ webhooks.retry.1 (2s) ] ────┤                  │ record sent/error without
-              [ webhooks.retry.2 (4s) ] ────┘                  │ holding a DB lock during HTTP
-                                            ┌──────────────────┘
-                                            ▼  after 3 delivery attempts
-                                    [ webhooks.dlq ]
 ```
 
 **Flow:**
@@ -62,17 +51,16 @@ client ──POST /payments──▶  API  ──┐  (one DB transaction)
    event in the **same transaction**, and returns `202 Accepted`.
 2. An outbox publisher loop running inside the API process claims pending outbox
    rows (`FOR UPDATE SKIP LOCKED`) and publishes them to the `payments` exchange.
-3. The consumer reads `payments.new`, locks the payment row, emulates the gateway
-   (2–5 s; 90% `succeeded` / 10% `failed`), persists the result, and inserts a
-   webhook delivery outbox event in the same transaction.
-4. The outbox publisher routes webhook events to `webhooks.deliver`; the webhook
-   sender claims delivery, releases the DB lock, sends the HTTP callback, then
-   records `webhook_sent_at` or `webhook_last_error`.
-5. If processing fails, the event is routed through TTL retry queues (2 s, then
-   4 s) that dead-letter back to `payments.new`. After 3 total attempts it lands
-   in `payments.dlq` for manual inspection.
-6. If webhook delivery fails, the webhook event follows its own TTL retry queues
-   and lands in `webhooks.dlq` after 3 failed delivery attempts.
+3. A single consumer reads `payments.new` and does everything: it locks the
+   payment row, emulates the gateway (2–5 s; 90% `succeeded` / 10% `failed`),
+   persists the result, then sends the webhook and records `webhook_sent_at` or
+   `webhook_last_error`.
+4. If any step fails — processing or webhook delivery — the event is routed
+   through TTL retry queues (2 s, then 4 s) that dead-letter back to
+   `payments.new`. Already-completed steps are skipped on redelivery: a terminal
+   status skips reprocessing, and `webhook_sent_at` skips resending.
+5. After 3 total attempts the event lands in `payments.dlq` for manual
+   inspection.
 
 ## Tech Stack
 
@@ -231,11 +219,11 @@ and defaults. The most relevant:
 - **Idempotent processing.** The payment consumer locks the payment row
   (`FOR UPDATE`) and skips any payment already in a terminal state, so duplicate
   deliveries never reprocess the gateway result.
-- **Idempotent webhook delivery.** Webhook delivery is guarded by
-  `webhook_sent_at` and a short `webhook_locked_until` lease. The HTTP request is
-  sent outside the database lock, then the result is recorded in a short follow-up
-  transaction.
-- **Retries.** Failed payment processing and failed webhook delivery each use
-  their own TTL retry queues with exponential delays of 2 s and 4 s.
-- **Dead-letter queues.** After 3 failed attempts, payment events go to
-  `payments.dlq` and webhook events go to `webhooks.dlq` for manual inspection.
+- **Idempotent webhook delivery.** The webhook is sent under the same row lock
+  with a `webhook_sent_at` check-and-set, so duplicate deliveries and retries
+  never resend a webhook that already went out.
+- **Retries.** Any failure — processing or webhook delivery — routes the event
+  through TTL retry queues with exponential delays of 2 s and 4 s; completed
+  steps are skipped on redelivery.
+- **Dead-letter queue.** After 3 failed attempts the event goes to
+  `payments.dlq` for manual inspection.
