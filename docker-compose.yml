@@ -75,5 +75,26 @@ services:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
+  grpc:
+    build: .
+    command: python -m app.grpc.server
+    environment:
+      API_KEY: ${API_KEY:-dev-api-key}
+      DATABASE_URL: postgresql+asyncpg://payments:payments@postgres:5432/payments
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      GRPC_PORT: 50051
+    ports:
+      - "${GRPC_PORT:-50051}:50051"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
 volumes:
   postgres_data:

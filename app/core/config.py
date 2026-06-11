@@ -16,6 +16,7 @@ class Settings(BaseSettings):
         default="amqp://guest:guest@localhost:5672/",
         alias="RABBITMQ_URL",
     )
+    grpc_port: int = Field(default=50051, alias="GRPC_PORT", ge=1, le=65535)
 
     outbox_poll_interval_seconds: float = Field(
         default=1.0,

@@ -1,4 +1,4 @@
-.PHONY: help up down down-v build logs logs-api logs-consumer test test-e2e test-broker-outage lint check migrate revision clean dev dev-api dev-worker
+.PHONY: help up down down-v build logs logs-api logs-consumer logs-grpc test test-e2e test-broker-outage lint check migrate revision grpc-generate clean dev dev-api dev-worker dev-grpc
 
 # Default target
 help: ## Show this help message
@@ -26,6 +26,9 @@ logs-api: ## Tail logs for the API service
 logs-consumer: ## Tail logs for the consumer service
 	docker compose logs -f consumer
 
+logs-grpc: ## Tail logs for the gRPC service
+	docker compose logs -f grpc
+
 # Local development targets
 test: ## Run the test suite (requires activated venv + dev dependencies)
 	pytest -q
@@ -51,6 +54,9 @@ migrate: ## Run database migrations (alembic upgrade head)
 revision: ## Create a new Alembic revision (usage: make revision MSG="your message")
 	alembic revision --autogenerate -m "$(MSG)"
 
+grpc-generate: ## Regenerate gRPC Python stubs from app/grpc/payment.proto
+	python -m grpc_tools.protoc -I . --python_out=. --grpc_python_out=. app/grpc/payment.proto
+
 dev: ## Print local development setup instructions
 	@echo "Local development setup:"
 	@echo ""
@@ -63,6 +69,7 @@ dev: ## Print local development setup instructions
 	@echo "Then in separate terminals:"
 	@echo "  make dev-api"
 	@echo "  make dev-worker"
+	@echo "  make dev-grpc"
 	@echo ""
 	@echo "Run tests with: make test"
 
@@ -71,6 +78,9 @@ dev-api: ## Run the FastAPI development server locally
 
 dev-worker: ## Run the FastStream consumer locally
 	faststream run app.worker:app --reload
+
+dev-grpc: ## Run the gRPC payment server locally
+	python -m app.grpc.server
 
 # Utility
 clean: ## Remove Python cache files and __pycache__ directories

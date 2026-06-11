@@ -64,8 +64,8 @@ client ──POST /payments──▶  API  ──┐  (one DB transaction)
 
 ## Tech Stack
 
-FastAPI · Pydantic v2 · SQLAlchemy 2.0 (async) · PostgreSQL · RabbitMQ via
-FastStream · Alembic · Docker Compose.
+FastAPI · gRPC · Pydantic v2 · SQLAlchemy 2.0 (async) · PostgreSQL · RabbitMQ
+via FastStream · Alembic · Docker Compose.
 
 ## Quick Start (Docker)
 
@@ -81,6 +81,7 @@ table.
 | Service                | URL / Address                               |
 | ---------------------- | ------------------------------------------- |
 | API                    | http://localhost:8000                       |
+| gRPC                   | localhost:50051                             |
 | RabbitMQ management UI | http://localhost:15672 (`guest` / `guest`)  |
 | PostgreSQL             | `localhost:5433` (override `POSTGRES_PORT`) |
 
@@ -113,6 +114,20 @@ PYTHONPATH=. python -c "import json; from pathlib import Path; from app.main imp
 The `Idempotency-Key` header is required, trimmed of surrounding whitespace, and
 limited to 255 characters. Replaying the same key returns the original payment
 instead of creating a duplicate.
+
+### gRPC
+
+The gRPC service exposes the same create-payment workflow as
+`POST /api/v1/payments`:
+
+| Service method                         | Metadata                          | Success |
+| -------------------------------------- | --------------------------------- | ------- |
+| `payments.v1.PaymentService/CreatePayment` | `x-api-key`, `idempotency-key` | accepted response |
+
+The protobuf contract lives at `app/grpc/payment.proto`. Request fields mirror
+the HTTP POST body: `amount`, `currency`, `description`, `metadata`, and
+`webhook_url`. The response contains `payment_id`, `status`, and `created_at`.
+Conflicting idempotency keys are returned as gRPC `ALREADY_EXISTS`.
 
 ## Usage Examples
 
@@ -158,6 +173,24 @@ curl -s http://localhost:8000/api/v1/payments/<payment_id> \
 Repeating the `POST` with the same `Idempotency-Key` returns the original payment
 rather than creating a new one.
 
+Create a payment through gRPC with `grpcurl`:
+
+```bash
+grpcurl -plaintext \
+  -import-path . \
+  -proto app/grpc/payment.proto \
+  -H "x-api-key: dev-api-key" \
+  -H "idempotency-key: order-1002" \
+  -d '{
+    "amount": "1500.00",
+    "currency": "RUB",
+    "description": "Order 1002",
+    "metadata": {"order_id": "1002"},
+    "webhook_url": "http://host.docker.internal:9000/webhook"
+  }' \
+  localhost:50051 payments.v1.PaymentService/CreatePayment
+```
+
 ## Local Development
 
 ```bash
@@ -173,6 +206,18 @@ Run the consumer in a separate terminal:
 
 ```bash
 faststream run app.worker:app --reload
+```
+
+Run the gRPC server in another terminal:
+
+```bash
+python -m app.grpc.server
+```
+
+Regenerate gRPC stubs after editing `app/grpc/payment.proto`:
+
+```bash
+make grpc-generate
 ```
 
 Run the tests:
@@ -213,6 +258,7 @@ and defaults. The most relevant:
 | `API_KEY`                        | Static key required in `X-API-Key`             |
 | `DATABASE_URL`                   | Async PostgreSQL DSN (`postgresql+asyncpg://`) |
 | `RABBITMQ_URL`                   | RabbitMQ connection URL                        |
+| `GRPC_PORT`                      | gRPC server listen port (default `50051`)      |
 | `PAYMENT_PROCESSING_MIN_SECONDS` | Lower bound of the emulated gateway delay      |
 | `PAYMENT_PROCESSING_MAX_SECONDS` | Upper bound of the emulated gateway delay      |
 | `PAYMENT_SUCCESS_RATE`           | Probability of `succeeded` (default `0.9`)     |

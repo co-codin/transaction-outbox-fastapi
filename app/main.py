@@ -1,42 +1,21 @@
 import logging
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from faststream.rabbit import RabbitBroker
 
 from app.api.routes import router
-from app.core.config import settings
-from app.db.session import async_session_maker
-from app.messaging.outbox import OutboxPublisher
-from app.messaging.topology import declare_topology
+from app.messaging.runtime import outbox_runtime
 
 logging.basicConfig(level=logging.INFO)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    broker = RabbitBroker(settings.rabbitmq_url)
-    await broker.start()
-    await declare_topology(broker)
-
-    outbox = OutboxPublisher(
-        broker,
-        async_session_maker,
-        poll_interval_seconds=settings.outbox_poll_interval_seconds,
-        batch_size=settings.outbox_batch_size,
-        retention_seconds=settings.outbox_retention_seconds,
-        cleanup_interval_seconds=settings.outbox_cleanup_interval_seconds,
-    )
-    outbox.start()
-    app.state.broker = broker
-    app.state.outbox = outbox
-
-    try:
+    async with outbox_runtime() as (broker, outbox):
+        app.state.broker = broker
+        app.state.outbox = outbox
         yield
-    finally:
-        await outbox.stop()
-        await broker.stop()
 
 
 app = FastAPI(title="Async Payment Processor", version="1.0.0", lifespan=lifespan)

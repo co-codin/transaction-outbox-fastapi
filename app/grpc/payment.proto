@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package payments.v1;
+
+import "google/protobuf/struct.proto";
+
+service PaymentService {
+  rpc CreatePayment(CreatePaymentRequest) returns (PaymentAcceptedResponse);
+}
+
+message CreatePaymentRequest {
+  string amount = 1;
+  string currency = 2;
+  string description = 3;
+  google.protobuf.Struct metadata = 4;
+  string webhook_url = 5;
+}
+
+message PaymentAcceptedResponse {
+  string payment_id = 1;
+  string status = 2;
+  string created_at = 3;
+}
