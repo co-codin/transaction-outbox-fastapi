@@ -44,11 +44,11 @@ def _timestamp(value: datetime) -> str:
     return serialized
 
 
-class Payments(payment_pb2_grpc.paymentsServicer):
+class Payments(payment_pb2_grpc.PaymentsServicer):
     def __init__(self, session_factory: Any = async_session_maker) -> None:
         self._session_factory = session_factory
 
-    async def POST(
+    async def CreatePayment(
         self,
         request: payment_pb2.CreatePaymentRequest,
         context: grpc.aio.ServicerContext,
@@ -103,7 +103,7 @@ class Payments(payment_pb2_grpc.paymentsServicer):
 
 async def serve() -> None:
     server = grpc.aio.server()
-    payment_pb2_grpc.add_paymentsServicer_to_server(Payments(), server)
+    payment_pb2_grpc.add_PaymentsServicer_to_server(Payments(), server)
     listen_addr = f"[::]:{settings.grpc_port}"
     server.add_insecure_port(listen_addr)
 

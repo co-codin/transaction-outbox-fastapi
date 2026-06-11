@@ -25,17 +25,17 @@ _sym_db = _symbol_database.Default()
 from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16\x61pp/grpc/payment.proto\x12\x04grpc\x1a\x1cgoogle/protobuf/struct.proto\"\x8d\x01\n\x14\x43reatePaymentRequest\x12\x0e\n\x06\x61mount\x18\x01 \x01(\t\x12\x10\n\x08\x63urrency\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12)\n\x08metadata\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x13\n\x0bwebhook_url\x18\x05 \x01(\t\"Q\n\x17PaymentAcceptedResponse\x12\x12\n\npayment_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t\x12\x12\n\ncreated_at\x18\x03 \x01(\t2M\n\x08payments\x12\x41\n\x04POST\x12\x1a.grpc.CreatePaymentRequest\x1a\x1d.grpc.PaymentAcceptedResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16\x61pp/grpc/payment.proto\x12\x0bpayments.v1\x1a\x1cgoogle/protobuf/struct.proto\"\x8d\x01\n\x14\x43reatePaymentRequest\x12\x0e\n\x06\x61mount\x18\x01 \x01(\t\x12\x10\n\x08\x63urrency\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12)\n\x08metadata\x18\x04 \x01(\x0b\x32\x17.google.protobuf.Struct\x12\x13\n\x0bwebhook_url\x18\x05 \x01(\t\"Q\n\x17PaymentAcceptedResponse\x12\x12\n\npayment_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t\x12\x12\n\ncreated_at\x18\x03 \x01(\t2d\n\x08Payments\x12X\n\rCreatePayment\x12!.payments.v1.CreatePaymentRequest\x1a$.payments.v1.PaymentAcceptedResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'app.grpc.payment_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
-  _globals['_CREATEPAYMENTREQUEST']._serialized_start=63
-  _globals['_CREATEPAYMENTREQUEST']._serialized_end=204
-  _globals['_PAYMENTACCEPTEDRESPONSE']._serialized_start=206
-  _globals['_PAYMENTACCEPTEDRESPONSE']._serialized_end=287
-  _globals['_PAYMENTS']._serialized_start=289
-  _globals['_PAYMENTS']._serialized_end=366
+  _globals['_CREATEPAYMENTREQUEST']._serialized_start=70
+  _globals['_CREATEPAYMENTREQUEST']._serialized_end=211
+  _globals['_PAYMENTACCEPTEDRESPONSE']._serialized_start=213
+  _globals['_PAYMENTACCEPTEDRESPONSE']._serialized_end=294
+  _globals['_PAYMENTS']._serialized_start=296
+  _globals['_PAYMENTS']._serialized_end=396
 # @@protoc_insertion_point(module_scope)

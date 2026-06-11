@@ -1,11 +1,11 @@
 syntax = "proto3";
 
-package grpc;
+package payments.v1;
 
 import "google/protobuf/struct.proto";
 
-service payments {
-  rpc POST(CreatePaymentRequest) returns (PaymentAcceptedResponse);
+service Payments {
+  rpc CreatePayment(CreatePaymentRequest) returns (PaymentAcceptedResponse);
 }
 
 message CreatePaymentRequest {
