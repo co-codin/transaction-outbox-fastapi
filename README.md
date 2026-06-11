@@ -120,9 +120,9 @@ instead of creating a duplicate.
 The gRPC service exposes the same create-payment workflow as
 `POST /api/v1/payments`:
 
-| Service method                         | Metadata                          | Success |
-| -------------------------------------- | --------------------------------- | ------- |
-| `payments.v1.PaymentService/CreatePayment` | `x-api-key`, `idempotency-key` | accepted response |
+| Service method       | Metadata                          | Success |
+| -------------------- | --------------------------------- | ------- |
+| `grpc.payments/POST` | `x-api-key`, `idempotency-key`    | accepted response |
 
 The protobuf contract lives at `app/grpc/payment.proto`. Request fields mirror
 the HTTP POST body: `amount`, `currency`, `description`, `metadata`, and
@@ -188,7 +188,7 @@ grpcurl -plaintext \
     "metadata": {"order_id": "1002"},
     "webhook_url": "http://host.docker.internal:9000/webhook"
   }' \
-  localhost:50051 payments.v1.PaymentService/CreatePayment
+  localhost:50051 grpc.payments/POST
 ```
 
 ## Local Development

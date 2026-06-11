@@ -90,7 +90,7 @@ async def test_create_payment_returns_accepted_payment(
     session_factory = FakeSessionFactory()
     monkeypatch.setattr(grpc_server, "create_payment", fake_create_payment)
 
-    response = await grpc_server.PaymentService(session_factory).CreatePayment(
+    response = await grpc_server.Payments(session_factory).POST(
         create_request(),
         auth_context("  grpc-smoke-1  "),
     )
@@ -107,7 +107,7 @@ async def test_create_payment_returns_accepted_payment(
 
 async def test_create_payment_requires_api_key() -> None:
     with pytest.raises(GrpcAbort) as exc_info:
-        await grpc_server.PaymentService(FakeSessionFactory()).CreatePayment(
+        await grpc_server.Payments(FakeSessionFactory()).POST(
             create_request(),
             FakeContext((("idempotency-key", "grpc-smoke-1"),)),
         )
@@ -118,7 +118,7 @@ async def test_create_payment_requires_api_key() -> None:
 
 async def test_create_payment_requires_idempotency_key() -> None:
     with pytest.raises(GrpcAbort) as exc_info:
-        await grpc_server.PaymentService(FakeSessionFactory()).CreatePayment(
+        await grpc_server.Payments(FakeSessionFactory()).POST(
             create_request(),
             FakeContext((("x-api-key", settings.api_key),)),
         )
@@ -129,7 +129,7 @@ async def test_create_payment_requires_idempotency_key() -> None:
 
 async def test_create_payment_rejects_invalid_payload() -> None:
     with pytest.raises(GrpcAbort) as exc_info:
-        await grpc_server.PaymentService(FakeSessionFactory()).CreatePayment(
+        await grpc_server.Payments(FakeSessionFactory()).POST(
             create_request(amount="-1.00"),
             auth_context(),
         )
@@ -147,7 +147,7 @@ async def test_create_payment_conflicting_idempotency_key_returns_already_exists
     monkeypatch.setattr(grpc_server, "create_payment", conflicting_create_payment)
 
     with pytest.raises(GrpcAbort) as exc_info:
-        await grpc_server.PaymentService(FakeSessionFactory()).CreatePayment(
+        await grpc_server.Payments(FakeSessionFactory()).POST(
             create_request(),
             auth_context(),
         )

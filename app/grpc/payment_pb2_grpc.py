@@ -25,7 +25,7 @@ if _version_not_supported:
     )
 
 
-class PaymentServiceStub:
+class paymentsStub:
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -34,43 +34,43 @@ class PaymentServiceStub:
         Args:
             channel: A grpc.Channel.
         """
-        self.CreatePayment = channel.unary_unary(
-                '/payments.v1.PaymentService/CreatePayment',
+        self.POST = channel.unary_unary(
+                '/grpc.payments/POST',
                 request_serializer=app_dot_grpc_dot_payment__pb2.CreatePaymentRequest.SerializeToString,
                 response_deserializer=app_dot_grpc_dot_payment__pb2.PaymentAcceptedResponse.FromString,
                 _registered_method=True)
 
 
-class PaymentServiceServicer:
+class paymentsServicer:
     """Missing associated documentation comment in .proto file."""
 
-    def CreatePayment(self, request, context):
+    def POST(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
 
-def add_PaymentServiceServicer_to_server(servicer, server):
+def add_paymentsServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'CreatePayment': grpc.unary_unary_rpc_method_handler(
-                    servicer.CreatePayment,
+            'POST': grpc.unary_unary_rpc_method_handler(
+                    servicer.POST,
                     request_deserializer=app_dot_grpc_dot_payment__pb2.CreatePaymentRequest.FromString,
                     response_serializer=app_dot_grpc_dot_payment__pb2.PaymentAcceptedResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'payments.v1.PaymentService', rpc_method_handlers)
+            'grpc.payments', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('payments.v1.PaymentService', rpc_method_handlers)
+    server.add_registered_method_handlers('grpc.payments', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class PaymentService:
+class payments:
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def CreatePayment(request,
+    def POST(request,
             target,
             options=(),
             channel_credentials=None,
@@ -83,7 +83,7 @@ class PaymentService:
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/payments.v1.PaymentService/CreatePayment',
+            '/grpc.payments/POST',
             app_dot_grpc_dot_payment__pb2.CreatePaymentRequest.SerializeToString,
             app_dot_grpc_dot_payment__pb2.PaymentAcceptedResponse.FromString,
             options,
